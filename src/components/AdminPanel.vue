@@ -1,8 +1,22 @@
 <template>
   <div class="admin-panel">
-    <h1>⚙️ Панель управления</h1>
+    <div class="panel-header">
+      <div>
+        <h1>⚙️ Панель управления</h1>
+        <p class="admin-subtitle">Добро пожаловать в систему управления приютом</p>
+      </div>
+      <button
+        class="seed-btn"
+        @click="runSeed"
+        :disabled="seeding"
+      >
+        <span v-if="seeding" class="seed-spinner"></span>
+        {{ seeding ? 'Загрузка данных...' : '🌱 Заполнить базу' }}
+      </button>
+    </div>
 
     <div v-if="adminError" class="admin-error-banner">{{ adminError }}</div>
+    <div v-if="seedSuccess" class="admin-success-banner">✅ {{ seedSuccess }}</div>
 
     <div class="admin-tabs">
       <button v-for="t in adminTabs" :key="t.value" :class="['atab', { active: activeTab === t.value }]" @click="activeTab = t.value">
@@ -10,14 +24,46 @@
       </button>
     </div>
 
-    <!-- STATISTICS -->
     <div v-if="activeTab === 'stats'" class="tab-content">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-num">{{ animals.length }}</div><div class="stat-lbl">Мест</div></div>
-        <div class="stat-card"><div class="stat-num">{{ bookings.length }}</div><div class="stat-lbl">Заявок</div></div>
-        <div class="stat-card"><div class="stat-num">{{ users.length }}</div><div class="stat-lbl">Пользователей</div></div>
-        <div class="stat-card"><div class="stat-num">{{ reviews.length }}</div><div class="stat-lbl">Отзывов</div></div>
+        <div class="stat-card">
+          <div class="stat-icon">🏠</div>
+          <div class="stat-num">{{ animals.length }}</div>
+          <div class="stat-lbl">Мест для постоя</div>
+          <div class="stat-sub">{{ animals.filter(a => a.available).length }} свободно</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-num">{{ bookings.length }}</div>
+          <div class="stat-lbl">Всего заявок</div>
+          <div class="stat-sub">{{ bookings.filter(b => b.status === 'pending').length }} ожидают</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-num">{{ users.length }}</div>
+          <div class="stat-lbl">Пользователей</div>
+          <div class="stat-sub">{{ users.filter(u => u.role === 'admin').length }} администраторов</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-num">{{ reviews.length }}</div>
+          <div class="stat-lbl">Отзывов</div>
+          <div class="stat-sub">Средний рейтинг {{ avgRating }}</div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="stat-icon">✅</div>
+          <div class="stat-num">{{ bookings.filter(b => b.status === 'confirmed').length }}</div>
+          <div class="stat-lbl">Подтверждено</div>
+          <div class="stat-sub">активных бронирований</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-num">{{ bookings.filter(b => b.status === 'completed').length }}</div>
+          <div class="stat-lbl">Завершено</div>
+          <div class="stat-sub">успешных визитов</div>
+        </div>
       </div>
+
       <h2>Последние заявки</h2>
       <div class="table-wrap">
         <table>
@@ -82,21 +128,35 @@
       </div>
 
       <div class="table-wrap">
+        <div class="table-controls">
+          <input v-model="animalSearch" class="table-search" placeholder="🔍 Поиск по названию или виду..." />
+          <select v-model="animalCategoryFilter" class="filter-select">
+            <option value="">Все категории</option>
+            <option v-for="c in animalCategories" :key="c" :value="c">{{ c }}</option>
+          </select>
+          <select v-model="animalSortBy" class="filter-select">
+            <option value="name">Название</option>
+            <option value="price_asc">Цена ↑</option>
+            <option value="price_desc">Цена ↓</option>
+            <option value="rating">Рейтинг</option>
+          </select>
+        </div>
         <table>
-          <thead><tr><th>Название</th><th>Вид животных</th><th>Категория</th><th>Цена/сут</th><th>Статус</th><th>Действия</th></tr></thead>
+          <thead><tr><th>Название</th><th>Вид животных</th><th>Категория</th><th>Цена/сут</th><th>Рейтинг</th><th>Статус</th><th>Действия</th></tr></thead>
           <tbody>
-            <tr v-for="a in animals" :key="a.id">
+            <tr v-for="a in filteredAdminAnimals" :key="a.id">
               <td>{{ a.name }}</td>
               <td>{{ a.species }}</td>
               <td>{{ a.category }}</td>
               <td>{{ a.price ? a.price.toLocaleString('ru-RU') + ' ₽/сут' : '—' }}</td>
+              <td>{{ a.rating ? '★ ' + a.rating.toFixed(1) : '—' }}</td>
               <td><span :class="['sbadge', a.available ? 'confirmed' : 'cancelled']">{{ a.available ? 'Свободно' : 'Занято' }}</span></td>
               <td class="actions">
                 <button class="btn-sm" @click="editAnimal(a)">✏️</button>
                 <button class="btn-sm danger" @click="deleteAnimal(a.id)">🗑️</button>
               </td>
             </tr>
-            <tr v-if="!animals.length"><td colspan="6" class="empty-row">Нет мест</td></tr>
+            <tr v-if="!filteredAdminAnimals.length"><td colspan="7" class="empty-row">Нет мест</td></tr>
           </tbody>
         </table>
       </div>
@@ -190,9 +250,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, query, orderBy, getDocs, where
+  doc, serverTimestamp, getDocs, where, query
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { seedDatabase, seedAnimalsCount } from '../utils/seedDatabase'
 
 const adminTabs = [
   { value: 'stats', label: '📊 Статистика' },
@@ -209,6 +270,8 @@ const users = ref([])
 const reviews = ref([])
 
 const adminError = ref('')
+const seedSuccess = ref('')
+const seeding = ref(false)
 
 const animalCategories = ['Кошки', 'Собаки', 'Птицы', 'Грызуны', 'Рептилии', 'Экзотика']
 const showAnimalForm = ref(false)
@@ -216,6 +279,9 @@ const editingAnimal = ref(null)
 const animalSaving = ref(false)
 const animalFormError = ref('')
 const bookingStatusFilter = ref('')
+const animalSearch = ref('')
+const animalCategoryFilter = ref('')
+const animalSortBy = ref('name')
 
 const defaultAnimalForm = () => ({
   name: '', species: '', breed: '', age: 0, gender: 'Самец',
@@ -250,8 +316,49 @@ const filteredBookings = computed(() => {
   return bookings.value.filter(b => b.status === bookingStatusFilter.value)
 })
 
+const avgRating = computed(() => {
+  if (!reviews.value.length) return '—'
+  const sum = reviews.value.reduce((s, r) => s + (r.rating || 0), 0)
+  return (sum / reviews.value.length).toFixed(1)
+})
+
+const filteredAdminAnimals = computed(() => {
+  let list = animals.value
+  if (animalCategoryFilter.value) list = list.filter(a => a.category === animalCategoryFilter.value)
+  if (animalSearch.value.trim()) {
+    const q = animalSearch.value.toLowerCase()
+    list = list.filter(a =>
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.species || '').toLowerCase().includes(q)
+    )
+  }
+  return [...list].sort((a, b) => {
+    if (animalSortBy.value === 'name') return (a.name || '').localeCompare(b.name || '')
+    if (animalSortBy.value === 'price_asc') return (a.price || 0) - (b.price || 0)
+    if (animalSortBy.value === 'price_desc') return (b.price || 0) - (a.price || 0)
+    if (animalSortBy.value === 'rating') return (b.rating || 0) - (a.rating || 0)
+    return 0
+  })
+})
+
 function statusLabel(s) {
   return { pending: 'Ожидание', confirmed: 'Подтверждено', cancelled: 'Отменено', completed: 'Завершено' }[s] || s
+}
+
+async function runSeed() {
+  if (!confirm(`Добавить ${seedAnimalsCount} животных в базу данных?`)) return
+  seeding.value = true
+  seedSuccess.value = ''
+  adminError.value = ''
+  try {
+    await seedDatabase()
+    seedSuccess.value = `База данных успешно заполнена! Добавлено ${seedAnimalsCount} животных.`
+    setTimeout(() => { seedSuccess.value = '' }, 5000)
+  } catch (e) {
+    adminError.value = 'Ошибка при заполнении базы данных.'
+  } finally {
+    seeding.value = false
+  }
 }
 
 async function saveAnimal() {
@@ -347,14 +454,50 @@ async function deleteReview(id, animalId) {
 <style scoped>
 .admin-panel { padding-bottom: 4rem; }
 
+.panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;
+}
+
 h1 { font-size: 1.9rem; font-weight: 900; margin-bottom: 0.4rem; color: #eef8f0; }
-.admin-subtitle { color: rgba(238,248,240,0.4); font-size: 0.92rem; margin-bottom: 2rem; }
+.admin-subtitle { color: rgba(238,248,240,0.4); font-size: 0.92rem; }
 h2 { font-size: 1.15rem; font-weight: 800; margin-bottom: 1rem; color: #eef8f0; }
 h3 { font-size: 1rem; font-weight: 800; color: #eef8f0; margin-bottom: 1rem; }
+
+.seed-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(62,207,94,0.15) 0%, rgba(62,207,94,0.05) 100%);
+  border: 1.5px solid rgba(62,207,94,0.4);
+  color: #3ecf5e; font-weight: 800; font-size: 0.9rem;
+  padding: 0.65rem 1.4rem; border-radius: 12px;
+  transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+}
+.seed-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(62,207,94,0.25) 0%, rgba(62,207,94,0.12) 100%);
+  border-color: #3ecf5e;
+  box-shadow: 0 0 20px rgba(62,207,94,0.25);
+  transform: translateY(-1px);
+}
+.seed-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.seed-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(62,207,94,0.3);
+  border-top-color: #3ecf5e;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .admin-error-banner {
   background: rgba(240,82,82,0.12); border: 1px solid rgba(240,82,82,0.3);
   color: #fca5a5; padding: 0.75rem 1rem; border-radius: 10px;
+  margin-bottom: 1.5rem; font-size: 0.92rem; font-weight: 600;
+}
+
+.admin-success-banner {
+  background: rgba(62,207,94,0.1); border: 1px solid rgba(62,207,94,0.3);
+  color: #3ecf5e; padding: 0.75rem 1rem; border-radius: 10px;
   margin-bottom: 1.5rem; font-size: 0.92rem; font-weight: 600;
 }
 
@@ -377,7 +520,6 @@ h3 { font-size: 1rem; font-weight: 800; color: #eef8f0; margin-bottom: 1rem; }
 
 .tab-content { }
 
-/* Stat cards */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
 .stat-card {
   background: rgba(17,42,28,0.7); border: 1.5px solid rgba(62,207,94,0.15);
@@ -385,14 +527,15 @@ h3 { font-size: 1rem; font-weight: 800; color: #eef8f0; margin-bottom: 1rem; }
   transition: border-color 0.2s, transform 0.2s;
 }
 .stat-card:hover { border-color: rgba(62,207,94,0.35); transform: translateY(-2px); }
+.stat-card.highlight { border-color: rgba(62,207,94,0.3); background: rgba(62,207,94,0.06); }
+.stat-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
 .stat-num { font-size: 2.4rem; font-weight: 900; background: linear-gradient(135deg, #3ecf5e, #a8f0b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block; }
 .stat-lbl { font-size: 0.78rem; font-weight: 700; color: rgba(238,248,240,0.4); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.25rem; }
+.stat-sub { font-size: 0.76rem; color: rgba(238,248,240,0.3); margin-top: 0.2rem; }
 
-/* Section header */
 .section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
 .section-header h2 { margin: 0; }
 
-/* Buttons */
 .btn-accent {
   display: inline-flex; align-items: center; gap: 0.4rem;
   background: linear-gradient(135deg, #3ecf5e 0%, #2aaf4a 100%);
@@ -409,7 +552,6 @@ h3 { font-size: 1rem; font-weight: 800; color: #eef8f0; margin-bottom: 1rem; }
 }
 .btn-outline:hover { border-color: rgba(62,207,94,0.45); color: #eef8f0; }
 
-/* Animal form */
 .card {
   background: rgba(17,42,28,0.65); backdrop-filter: blur(8px);
   border: 1.5px solid rgba(62,207,94,0.18); border-radius: 16px;
@@ -426,8 +568,23 @@ h3 { font-size: 1rem; font-weight: 800; color: #eef8f0; margin-bottom: 1rem; }
 .error-msg { background: rgba(240,82,82,0.12); border: 1px solid rgba(240,82,82,0.3); color: #fca5a5; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 0.75rem; }
 .form-actions { display: flex; gap: 0.75rem; }
 
-/* Table */
+.table-controls {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  padding: 1rem; border-bottom: 1px solid rgba(62,207,94,0.1);
+  background: rgba(17,42,28,0.5);
+  border-radius: 14px 14px 0 0;
+}
+.table-search {
+  flex: 1; min-width: 200px;
+  background: rgba(255,255,255,0.04); border: 1.5px solid rgba(62,207,94,0.18);
+  color: rgba(238,248,240,0.85); border-radius: 9px; font-size: 0.85rem; font-weight: 600;
+  padding: 0.4rem 0.75rem;
+}
+.table-search:focus { outline: none; border-color: rgba(62,207,94,0.4); }
+.table-search::placeholder { color: rgba(238,248,240,0.3); font-weight: 400; }
+
 .table-wrap { overflow-x: auto; border-radius: 14px; border: 1.5px solid rgba(62,207,94,0.12); }
+.table-wrap .table-controls + table { border-radius: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 thead th {
   padding: 0.85rem 1rem; text-align: left;
@@ -442,7 +599,6 @@ tbody tr:hover { background: rgba(62,207,94,0.04); }
 td { padding: 0.85rem 1rem; color: rgba(238,248,240,0.75); vertical-align: middle; }
 .empty-row { text-align: center; color: rgba(238,248,240,0.3); font-style: italic; }
 
-/* Status badges */
 .sbadge {
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.25rem 0.7rem; border-radius: 999px;
@@ -453,7 +609,6 @@ td { padding: 0.85rem 1rem; color: rgba(238,248,240,0.75); vertical-align: middl
 .sbadge.cancelled { background: rgba(240,82,82,0.12); border: 1px solid rgba(240,82,82,0.3); color: #f87171; }
 .sbadge.completed { background: rgba(84,180,248,0.12); border: 1px solid rgba(84,180,248,0.3); color: #7dd3fc; }
 
-/* Role badge */
 .role-badge {
   display: inline-flex; padding: 0.2rem 0.65rem; border-radius: 999px;
   font-size: 0.75rem; font-weight: 800;
@@ -481,5 +636,9 @@ td { padding: 0.85rem 1rem; color: rgba(238,248,240,0.75); vertical-align: middl
 @media (max-width: 640px) {
   .form-grid { grid-template-columns: 1fr; }
   .form-group.full { grid-column: 1; }
+  .panel-header { flex-direction: column; }
+  .seed-btn { width: 100%; justify-content: center; }
+  .table-controls { flex-direction: column; }
+  .table-search { min-width: unset; }
 }
 </style>

@@ -52,16 +52,48 @@
         </div>
       </div>
 
+      <div class="advanced-filters">
+        <div class="price-filter">
+          <span class="sort-label">Макс. цена: <strong class="price-val">{{ maxPrice === maxPriceLimit ? 'Любая' : maxPrice.toLocaleString('ru-RU') + ' ₽' }}</strong></span>
+          <input
+            type="range"
+            v-model.number="maxPrice"
+            :min="0"
+            :max="maxPriceLimit"
+            :step="100"
+            class="price-range"
+            @change="currentPage = 1"
+          />
+        </div>
+        <label class="avail-toggle">
+          <input type="checkbox" v-model="onlyAvailable" @change="currentPage = 1" />
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+          <span class="toggle-label">Только свободные</span>
+        </label>
+      </div>
+
       <!-- Results count -->
       <div v-if="!loading" class="results-meta">
         <span class="results-count">{{ filtered.length }} мест для постоя</span>
         <span v-if="search || selectedCategory !== 'all'" class="results-hint">по вашим фильтрам</span>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="loading-wrap">
-        <div class="spinner"></div>
-        <p>Загрузка мест...</p>
+      <!-- Loading skeletons -->
+      <div v-if="loading" class="grid">
+        <div v-for="i in 6" :key="i" class="skeleton-card">
+          <div class="skeleton-img"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-footer">
+              <div class="skeleton-line short"></div>
+              <div class="skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Empty -->
@@ -148,6 +180,9 @@ const sortBy = ref('name')
 const currentPage = ref(1)
 const pageSize = 12
 const favorites = ref(JSON.parse(localStorage.getItem('zoo_favorites') || '[]'))
+const maxPriceLimit = 10000
+const maxPrice = ref(maxPriceLimit)
+const onlyAvailable = ref(false)
 
 const categories = [
   { value: 'all', label: 'Все', emoji: '🐾' },
@@ -187,6 +222,8 @@ const unsubAuth = onAuthStateChanged(auth, async user => {
 const filtered = computed(() => {
   let list = animals.value
   if (selectedCategory.value !== 'all') list = list.filter(a => a.category === selectedCategory.value)
+  if (onlyAvailable.value) list = list.filter(a => a.available)
+  if (maxPrice.value < maxPriceLimit) list = list.filter(a => !a.price || a.price <= maxPrice.value)
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     list = list.filter(a =>
@@ -205,7 +242,7 @@ const filtered = computed(() => {
   })
 })
 
-watch([search, selectedCategory], () => { currentPage.value = 1 })
+watch([search, selectedCategory, maxPrice, onlyAvailable], () => { currentPage.value = 1 })
 
 const paginatedAnimals = computed(() => filtered.value.slice(0, currentPage.value * pageSize))
 const hasMore = computed(() => paginatedAnimals.value.length < filtered.value.length)
@@ -603,12 +640,138 @@ function toggleFavorite(id) {
   font-size: 0.85rem;
 }
 
+.advanced-filters {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem 1.1rem;
+  background: rgba(255,255,255,0.02);
+  border: 1.5px solid rgba(62,207,94,0.1);
+  border-radius: 14px;
+}
+
+.price-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 200px;
+}
+.price-val { color: #3ecf5e; }
+.price-range {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: rgba(62,207,94,0.2);
+  border-radius: 2px;
+  outline: none;
+}
+.price-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #3ecf5e;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(62,207,94,0.4);
+}
+.price-range::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #3ecf5e;
+  cursor: pointer;
+  border: none;
+}
+
+.avail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.avail-toggle input { display: none; }
+.toggle-track {
+  position: relative;
+  width: 40px; height: 22px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(62,207,94,0.25);
+  border-radius: 999px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.avail-toggle input:checked ~ .toggle-track {
+  background: rgba(62,207,94,0.2);
+  border-color: #3ecf5e;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  background: rgba(238,248,240,0.4);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.avail-toggle input:checked ~ .toggle-track .toggle-thumb {
+  transform: translateX(18px);
+  background: #3ecf5e;
+}
+.toggle-label {
+  font-size: 0.87rem;
+  font-weight: 700;
+  color: rgba(238,248,240,0.6);
+  white-space: nowrap;
+}
+.avail-toggle input:checked ~ .toggle-label { color: #3ecf5e; }
+
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-card {
+  background: rgba(17,42,28,0.7);
+  border: 1.5px solid rgba(62,207,94,0.08);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.skeleton-img {
+  width: 100%;
+  height: 210px;
+  background: linear-gradient(90deg, rgba(62,207,94,0.04) 0%, rgba(62,207,94,0.1) 50%, rgba(62,207,94,0.04) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-body { padding: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(62,207,94,0.04) 0%, rgba(62,207,94,0.1) 50%, rgba(62,207,94,0.04) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  width: 100%;
+}
+.skeleton-line.short { width: 45%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(62,207,94,0.07);
+}
+.skeleton-footer .skeleton-line { height: 14px; }
+
 @media (max-width: 640px) {
   .hero { padding: 3.5rem 1rem 2.5rem; }
   .controls { flex-direction: column; }
   .sort-row { width: 100%; }
   .sort-select { flex: 1; }
   .main { padding: 1rem 1rem 3rem; }
+  .advanced-filters { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .price-filter { width: 100%; }
 }
 </style>
 
