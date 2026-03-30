@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <Header :currentUser="currentUser" :isAdmin="isAdmin" @show-auth="showAuth = true" />
+    <Header :currentUser="currentUser" :isAdmin="isAdmin" :currentView="'admin'" :navigate="props.navigate" @show-auth="showAuth = true" />
     <AuthModal v-if="showAuth" @close="showAuth = false" />
     <main class="main">
       <div v-if="authLoading" class="loading"><div class="spinner"></div></div>
@@ -11,7 +11,7 @@
       <div v-else-if="!isAdmin" class="forbidden">
         <h2>🚫 Доступ запрещён</h2>
         <p>У вас нет прав для просмотра этой страницы</p>
-        <button class="btn-accent" @click="$router.push('/')">На главную</button>
+        <button class="btn-accent" @click="props.navigate('home')">На главную</button>
       </div>
       <AdminPanel v-else />
     </main>
@@ -26,6 +26,8 @@ import { auth, db } from '../firebase/config'
 import Header from '../components/Header.vue'
 import AuthModal from './AuthModal.vue'
 import AdminPanel from '../components/AdminPanel.vue'
+
+const props = defineProps({ navigate: Function })
 
 const currentUser = ref(null)
 const isAdmin = ref(false)

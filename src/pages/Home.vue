@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <Header :currentUser="currentUser" :isAdmin="isAdmin" @show-auth="showAuth = true" />
+    <Header :currentUser="currentUser" :isAdmin="isAdmin" :currentView="'home'" :navigate="props.navigate" @show-auth="showAuth = true" />
     <AuthModal v-if="showAuth" @close="showAuth = false" />
 
     <!-- HERO -->
@@ -78,7 +78,7 @@
           v-for="animal in paginatedAnimals"
           :key="animal.id"
           class="animal-card"
-          @click="$router.push('/animal/' + animal.id)"
+          @click="props.navigate('animal-detail', animal.id)"
         >
           <div class="card-media">
             <img
@@ -134,6 +134,8 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/config'
 import Header from '../components/Header.vue'
 import AuthModal from './AuthModal.vue'
+
+const props = defineProps({ navigate: Function })
 
 const currentUser = ref(null)
 const isAdmin = ref(false)
@@ -223,7 +225,7 @@ function toggleFavorite(id) {
 <style scoped>
 .page { min-height: 100vh; }
 
-/* ---- HERO ---- */
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -310,7 +312,7 @@ function toggleFavorite(id) {
 }
 .hero-search-input::placeholder { color: rgba(238,248,240,0.3); font-weight: 400; }
 
-/* Decorative circles */
+
 .hero-decor { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .decor-circle {
   position: absolute;
@@ -321,14 +323,14 @@ function toggleFavorite(id) {
 .c2 { width: 350px; height: 350px; top: -80px; right: -100px; }
 .c3 { width: 200px; height: 200px; bottom: -50px; left: 40%; border-color: rgba(245,200,66,0.06); }
 
-/* ---- MAIN ---- */
+
 .main {
   max-width: 1320px;
   margin: 0 auto;
   padding: 1.5rem 1.75rem 4rem;
 }
 
-/* Controls */
+
 .controls {
   display: flex;
   align-items: flex-start;
@@ -382,7 +384,7 @@ function toggleFavorite(id) {
   min-width: 140px;
 }
 
-/* Results meta */
+
 .results-meta {
   display: flex;
   align-items: center;
@@ -393,14 +395,14 @@ function toggleFavorite(id) {
 }
 .results-count { font-weight: 800; color: rgba(238,248,240,0.7); font-size: 0.95rem; }
 
-/* Loading */
+
 .loading-wrap {
   text-align: center;
   padding: 5rem 2rem;
   color: rgba(238,248,240,0.45);
 }
 
-/* Empty */
+
 .empty-state {
   text-align: center;
   padding: 5rem 2rem;
@@ -424,14 +426,14 @@ function toggleFavorite(id) {
 }
 .reset-btn:hover { background: rgba(62,207,94,0.2); }
 
-/* Grid */
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 1.5rem;
 }
 
-/* Card */
+
 .animal-card {
   background: rgba(17,42,28,0.7);
   border: 1.5px solid rgba(62,207,94,0.12);
@@ -575,7 +577,7 @@ function toggleFavorite(id) {
 }
 .star { color: #f5c842; font-size: 0.9rem; }
 
-/* Load more */
+
 .load-more { text-align: center; margin-top: 3rem; }
 .load-more-btn {
   background: rgba(62,207,94,0.08);

@@ -1,13 +1,13 @@
 <template>
   <div class="page">
-    <Header :currentUser="currentUser" :isAdmin="isAdmin" @show-auth="showAuth = true" />
+    <Header :currentUser="currentUser" :isAdmin="isAdmin" :currentView="'profile'" :navigate="props.navigate" @show-auth="showAuth = true" />
     <AuthModal v-if="showAuth" @close="showAuth = false" />
     <main class="main">
       <div v-if="!currentUser && !authLoading" class="auth-required">
         <p>Войдите, чтобы просмотреть профиль</p>
         <button class="btn-accent" @click="showAuth = true">Войти</button>
       </div>
-      <ProfileComponent v-else-if="currentUser" :currentUser="currentUser" />
+      <ProfileComponent v-else-if="currentUser" :currentUser="currentUser" :navigate="props.navigate" />
     </main>
   </div>
 </template>
@@ -20,6 +20,8 @@ import { auth, db } from '../firebase/config'
 import Header from '../components/Header.vue'
 import AuthModal from './AuthModal.vue'
 import ProfileComponent from '../components/Profile.vue'
+
+const props = defineProps({ navigate: Function })
 
 const currentUser = ref(null)
 const isAdmin = ref(false)

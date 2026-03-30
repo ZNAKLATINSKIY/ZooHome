@@ -49,7 +49,7 @@
       <div v-else-if="userReviews.length === 0" class="empty">Вы ещё не оставляли отзывов</div>
       <div v-for="review in userReviews" :key="review.id" class="review-card">
         <div class="review-header">
-          <router-link :to="'/animal/' + review.animalId" class="animal-link">{{ review.animalName }}</router-link>
+          <button class="animal-link" @click="props.navigate && props.navigate('animal-detail', review.animalId)">{{ review.animalName }}</button>
           <span class="review-stars">{{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}</span>
           <span class="review-date">{{ formatDate(review.createdAt) }}</span>
         </div>
@@ -109,7 +109,7 @@ import {
 import { updateProfile } from 'firebase/auth'
 import { db, auth } from '../firebase/config'
 
-const props = defineProps({ currentUser: Object })
+const props = defineProps({ currentUser: Object, navigate: Function })
 
 const userInitial = computed(() => {
   if (!props.currentUser) return '?'
@@ -352,7 +352,8 @@ function formatDate(ts) {
 }
 .review-card:hover { border-color: rgba(62,207,94,0.25); }
 .review-header { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
-.animal-link { color: #3ecf5e; font-weight: 800; font-size: 0.93rem; }
+.animal-link { color: #3ecf5e; font-weight: 800; font-size: 0.93rem; background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: transparent; }
+.animal-link:hover { text-decoration-color: #3ecf5e; }
 .review-stars { color: #f5c842; font-size: 0.95rem; }
 .review-date { color: rgba(238,248,240,0.3); font-size: 0.78rem; margin-left: auto; }
 .review-text { color: rgba(238,248,240,0.6); line-height: 1.7; margin-bottom: 0.75rem; font-size: 0.92rem; }

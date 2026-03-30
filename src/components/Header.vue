@@ -1,18 +1,18 @@
 <template>
   <header class="header">
     <div class="header-inner">
-      <router-link to="/" class="logo">
+      <button class="logo" @click="navigate('home')">
         <span class="logo-icon">🐾</span>
         <span class="logo-text">Зоопитомник</span>
-      </router-link>
+      </button>
 
       <nav class="nav">
-        <router-link to="/" class="nav-link">Главная</router-link>
-        <router-link to="/bookings" class="nav-link">Мои заявки</router-link>
-        <router-link to="/profile" class="nav-link">Кабинет</router-link>
-        <router-link v-if="isAdmin" to="/admin" class="nav-link nav-admin">
+        <button :class="['nav-link', { active: currentView === 'home' }]" @click="navigate('home')">Главная</button>
+        <button :class="['nav-link', { active: currentView === 'bookings' }]" @click="navigate('bookings')">Мои заявки</button>
+        <button :class="['nav-link', { active: currentView === 'profile' }]" @click="navigate('profile')">Кабинет</button>
+        <button v-if="isAdmin" :class="['nav-link', 'nav-admin', { active: currentView === 'admin' }]" @click="navigate('admin')">
           <span class="admin-dot"></span>Админ
-        </router-link>
+        </button>
       </nav>
 
       <div class="auth-area">
@@ -33,15 +33,15 @@
                   </div>
                 </div>
                 <div class="dropdown-divider"></div>
-                <router-link to="/profile" class="dropdown-item" @click="menuOpen = false">
+                <button class="dropdown-item" @click="navigate('profile'); menuOpen = false">
                   <span>👤</span> Профиль
-                </router-link>
-                <router-link to="/bookings" class="dropdown-item" @click="menuOpen = false">
+                </button>
+                <button class="dropdown-item" @click="navigate('bookings'); menuOpen = false">
                   <span>📅</span> Мои заявки
-                </router-link>
-                <router-link v-if="isAdmin" to="/admin" class="dropdown-item" @click="menuOpen = false">
+                </button>
+                <button v-if="isAdmin" class="dropdown-item" @click="navigate('admin'); menuOpen = false">
                   <span>⚙️</span> Админ панель
-                </router-link>
+                </button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item logout" @click="handleLogout">
                   <span>🚪</span> Выйти
@@ -64,10 +64,10 @@
 
     <Transition name="mobile">
       <nav v-if="mobileOpen" class="mobile-nav">
-        <router-link to="/" class="mob-link" @click="mobileOpen = false">🏠 Главная</router-link>
-        <router-link to="/bookings" class="mob-link" @click="mobileOpen = false">📅 Мои заявки</router-link>
-        <router-link to="/profile" class="mob-link" @click="mobileOpen = false">👤 Кабинет</router-link>
-        <router-link v-if="isAdmin" to="/admin" class="mob-link admin" @click="mobileOpen = false">⚙️ Админ</router-link>
+        <button :class="['mob-link', { active: currentView === 'home' }]" @click="navigate('home'); mobileOpen = false">🏠 Главная</button>
+        <button :class="['mob-link', { active: currentView === 'bookings' }]" @click="navigate('bookings'); mobileOpen = false">📅 Мои заявки</button>
+        <button :class="['mob-link', { active: currentView === 'profile' }]" @click="navigate('profile'); mobileOpen = false">👤 Кабинет</button>
+        <button v-if="isAdmin" :class="['mob-link', 'admin', { active: currentView === 'admin' }]" @click="navigate('admin'); mobileOpen = false">⚙️ Админ</button>
         <div class="mob-divider"></div>
         <template v-if="!currentUser">
           <button class="mob-login-btn" @click="$emit('show-auth'); mobileOpen = false">Войти</button>
@@ -89,6 +89,8 @@ import { auth } from '../firebase/config'
 const props = defineProps({
   currentUser: Object,
   isAdmin: Boolean,
+  currentView: String,
+  navigate: Function,
 })
 
 defineEmits(['show-auth'])
@@ -96,6 +98,10 @@ defineEmits(['show-auth'])
 const menuOpen = ref(false)
 const mobileOpen = ref(false)
 const menuRef = ref(null)
+
+function navigate(view, id = null) {
+  if (props.navigate) props.navigate(view, id)
+}
 
 const userInitial = computed(() => {
   if (!props.currentUser) return ''
@@ -140,13 +146,16 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   gap: 2.5rem;
 }
 
-/* Logo */
 .logo {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
   flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 .logo-icon {
   font-size: 1.6rem;
@@ -162,7 +171,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   letter-spacing: -0.02em;
 }
 
-/* Nav */
 .nav {
   display: flex;
   gap: 0.25rem;
@@ -176,12 +184,15 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   border-radius: 8px;
   transition: all 0.2s;
   text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 .nav-link:hover {
   color: var(--text-primary);
   background: rgba(255,255,255,0.05);
 }
-.nav-link.router-link-exact-active {
+.nav-link.active {
   color: #3ecf5e;
   background: rgba(62,207,94,0.12);
 }
@@ -192,7 +203,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   color: #f5c842 !important;
 }
 .nav-admin:hover { background: rgba(245,200,66,0.1) !important; }
-.nav-admin.router-link-exact-active { background: rgba(245,200,66,0.12) !important; }
+.nav-admin.active { background: rgba(245,200,66,0.12) !important; }
 .admin-dot {
   width: 6px; height: 6px;
   background: #f5c842;
@@ -201,7 +212,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   flex-shrink: 0;
 }
 
-/* Auth area */
 .auth-area { margin-left: auto; }
 
 .btn-login {
@@ -213,13 +223,14 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   border-radius: 10px;
   box-shadow: 0 2px 14px rgba(62,207,94,0.3);
   transition: all 0.2s;
+  border: none;
+  cursor: pointer;
 }
 .btn-login:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 20px rgba(62,207,94,0.45);
 }
 
-/* User menu */
 .user-menu { position: relative; }
 
 .user-btn {
@@ -232,6 +243,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   padding: 0.4rem 0.85rem 0.4rem 0.5rem;
   border-radius: 12px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 .user-btn:hover {
   border-color: rgba(62,207,94,0.55);
@@ -259,7 +271,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 }
 .chevron-icon.open { transform: rotate(180deg); }
 
-/* Dropdown */
 .dropdown {
   position: absolute;
   right: 0;
@@ -325,15 +336,16 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   font-size: 0.9rem;
   font-weight: 600;
   background: none;
+  border: none;
   border-radius: 10px;
   transition: all 0.15s;
   text-decoration: none;
+  cursor: pointer;
 }
 .dropdown-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 .dropdown-item.logout { color: rgba(240,82,82,0.8); }
 .dropdown-item.logout:hover { background: rgba(240,82,82,0.1); color: #f05252; }
 
-/* Dropdown transition */
 .dropdown-enter-active, .dropdown-leave-active {
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: top right;
@@ -343,16 +355,17 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   transform: scale(0.92) translateY(-8px);
 }
 
-/* Burger */
 .burger {
   display: none;
   flex-direction: column;
   gap: 5px;
   background: none;
+  border: none;
   margin-left: auto;
   padding: 6px;
   border-radius: 8px;
   transition: background 0.2s;
+  cursor: pointer;
 }
 .burger:hover { background: rgba(255,255,255,0.06); }
 .burger span {
@@ -366,7 +379,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 .burger.open span:nth-child(2) { opacity: 0; }
 .burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* Mobile nav */
 .mobile-nav {
   border-top: 1px solid rgba(62,207,94,0.12);
   padding: 1rem 1.5rem 1.25rem;
@@ -387,8 +399,12 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   border-radius: 10px;
   text-decoration: none;
   transition: all 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
-.mob-link:hover, .mob-link.router-link-exact-active {
+.mob-link:hover, .mob-link.active {
   background: rgba(255,255,255,0.06);
   color: var(--text-primary);
 }
@@ -416,6 +432,8 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   border-radius: 10px;
   font-size: 1rem;
   margin-top: 0.25rem;
+  border: none;
+  cursor: pointer;
 }
 
 .mob-logout {
@@ -427,9 +445,9 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   border-radius: 10px;
   font-size: 0.95rem;
   text-align: left;
+  cursor: pointer;
 }
 
-/* Mobile transition */
 .mobile-enter-active, .mobile-leave-active { transition: all 0.2s ease; }
 .mobile-enter-from, .mobile-leave-to { opacity: 0; transform: translateY(-10px); }
 
@@ -438,4 +456,3 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   .burger { display: flex; }
 }
 </style>
-

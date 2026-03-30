@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <Header :currentUser="currentUser" :isAdmin="isAdmin" @show-auth="showAuth = true" />
+    <Header :currentUser="currentUser" :isAdmin="isAdmin" :currentView="'bookings'" :navigate="props.navigate" @show-auth="showAuth = true" />
     <AuthModal v-if="showAuth" @close="showAuth = false" />
 
     <div class="page-top">
@@ -64,7 +64,7 @@
             <div class="empty-emoji">🗓️</div>
             <h3>Нет активных заявок</h3>
             <p>Найдите подходящее место и оставьте заявку на постой вашего питомца</p>
-            <button class="btn-accent" @click="$router.push('/')">🐾 Найти место</button>
+            <button class="btn-accent" @click="props.navigate('home')">🐾 Найти место</button>
           </div>
           <div v-else class="bookings-list">
             <BookingCard v-for="b in activeBookings" :key="b.id" :booking="b" @cancel="cancelBooking(b.id)" />
@@ -95,6 +95,8 @@ import { db, auth } from '../firebase/config'
 import Header from '../components/Header.vue'
 import AuthModal from './AuthModal.vue'
 import BookingCard from '../components/BookingCard.vue'
+
+const props = defineProps({ navigate: Function })
 
 const currentUser = ref(null)
 const isAdmin = ref(false)
