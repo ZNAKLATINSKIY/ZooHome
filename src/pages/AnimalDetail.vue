@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <Header :currentUser="currentUser" :isAdmin="isAdmin" @show-auth="showAuth = true" />
+    <Header :currentUser="currentUser" :isAdmin="isAdmin" :currentView="'animal-detail'" :navigate="props.navigate" @show-auth="showAuth = true" />
     <AuthModal v-if="showAuth" @close="showAuth = false" />
 
     <div v-if="loading" class="loading-page">
@@ -12,13 +12,13 @@
       <div class="not-found-emoji">🐾</div>
       <h2>Место не найдено</h2>
       <p>Возможно, оно уже занято или было удалено</p>
-      <button class="btn-back" @click="$router.push('/')">На главную</button>
+      <button class="btn-back" @click="props.navigate('home')">На главную</button>
     </div>
 
     <template v-else>
       <!-- Hero section -->
       <div class="detail-hero">
-        <button class="back-btn" @click="$router.back()">
+        <button class="back-btn" @click="props.navigate('home')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           Назад
         </button>
@@ -188,7 +188,7 @@
               v-for="a in similarAnimals"
               :key="a.id"
               class="similar-card"
-              @click="$router.push('/animal/' + a.id)"
+              @click="props.navigate('animal-detail', a.id)"
             >
               <img
                 :src="a.imageUrl || 'https://placehold.co/300x200/0f2318/3ecf5e?text=' + encodeURIComponent(a.name)"
@@ -221,7 +221,7 @@ import { db, auth } from '../firebase/config'
 import Header from '../components/Header.vue'
 import AuthModal from './AuthModal.vue'
 
-const props = defineProps({ id: String })
+const props = defineProps({ id: String, navigate: Function })
 
 const currentUser = ref(null)
 const isAdmin = ref(false)
